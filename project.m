@@ -2,25 +2,28 @@ classdef groupProject < matlab.apps.AppBase
 
     % Properties that correspond to app components
     properties (Access = public)
-        UIFigure                      matlab.ui.Figure
-        GridLayout                    matlab.ui.container.GridLayout
-        LeftPanel                     matlab.ui.container.Panel
-        CurrentTemperatureGauge       matlab.ui.control.Gauge
-        CurrentTemperatureGaugeLabel  matlab.ui.control.Label
-        SaveButton_2                  matlab.ui.control.Button
-        SaveButton                    matlab.ui.control.Button
-        CenterPanel                   matlab.ui.container.Panel
-        DigitalClockLabel             matlab.ui.control.Label
-        StopPlotButton                matlab.ui.control.Button
-        StartPlotButton_2             matlab.ui.control.Button
-        UIAxes                        matlab.ui.control.UIAxes
-        RightPanel                    matlab.ui.container.Panel
-        ManualDayLightSwitch          matlab.ui.control.Switch
-        ManualDayLightSwitchLabel     matlab.ui.control.Label
-        LightModeSwitch               matlab.ui.control.RockerSwitch
-        LightModeSwitchLabel          matlab.ui.control.Label
-        ManualNightLightSwitch        matlab.ui.control.Switch
-        ManualNightLightSwitchLabel   matlab.ui.control.Label
+        UIFigure                     matlab.ui.Figure
+        GridLayout                   matlab.ui.container.GridLayout
+        LeftPanel                    matlab.ui.container.Panel
+        StopPlotButton               matlab.ui.control.Button
+        StartPlotButton_2            matlab.ui.control.Button
+        TemperatureGauge             matlab.ui.control.Gauge
+        TemperatureGaugeLabel        matlab.ui.control.Label
+        OpenButton                   matlab.ui.control.Button
+        SaveButton                   matlab.ui.control.Button
+        CenterPanel                  matlab.ui.container.Panel
+        TimerLabel                   matlab.ui.control.Label
+        DigitalClockLabel            matlab.ui.control.Label
+        UIAxes                       matlab.ui.control.UIAxes
+        RightPanel                   matlab.ui.container.Panel
+        LampNight                    matlab.ui.control.Lamp
+        LampDay                      matlab.ui.control.Lamp
+        ManualDayLightSwitch         matlab.ui.control.Switch
+        ManualDayLightSwitchLabel    matlab.ui.control.Label
+        LightModeSwitch              matlab.ui.control.RockerSwitch
+        LightModeSwitchLabel         matlab.ui.control.Label
+        ManualNightLightSwitch       matlab.ui.control.Switch
+        ManualNightLightSwitchLabel  matlab.ui.control.Label
     end
 
     % Properties that correspond to apps with auto-reflow
@@ -98,19 +101,31 @@ classdef groupProject < matlab.apps.AppBase
                 app.tempK = 1 ./ (A1 + B1 .* resRatio + C1 .* resRatio .^ 2 + D1 .* resRatio .^ 3);
                 tempC = app.tempK - 273.15;
                 app.tempF = 9/5 * tempC + 32;
-                app.CurrentTemperatureGauge.Value = app.tempF;
+                app.TemperatureGauge.Value = app.tempF;
                 plot(app.UIAxes, i, app.tempF,"b*");
                 hold(app.UIAxes, "on");
                 updateClockLabel(app);
                 i = i + 1;
                 pause(1);
             end
-
         end
 
         % Button pushed function: StopPlotButton
         function StopPlotButtonPushed(app, event)
             app.Plotting = false;
+        end
+
+        % Value changed function: LightModeSwitch
+        function LightModeSwitchValueChanged(app, event)
+            value = app.LightModeSwitch.Value;
+            if value == "Day"
+                app.LampNight.Color = [1,1,1];
+                app.LampDay.Color = [1,1,0];
+            end
+            if value == "Night"
+                app.LampDay.Color = [1,1,1];
+                app.LampNight.Color = [1,0,0];
+            end
         end
 
         % Changes arrangement of the app based on UIFigure width
@@ -180,25 +195,39 @@ classdef groupProject < matlab.apps.AppBase
             % Create SaveButton
             app.SaveButton = uibutton(app.LeftPanel, 'push');
             app.SaveButton.FontSize = 18;
-            app.SaveButton.Position = [20 282 117 69];
+            app.SaveButton.Position = [20 313 117 69];
             app.SaveButton.Text = 'Save';
 
-            % Create SaveButton_2
-            app.SaveButton_2 = uibutton(app.LeftPanel, 'push');
-            app.SaveButton_2.FontSize = 18;
-            app.SaveButton_2.Position = [20 188 117 69];
-            app.SaveButton_2.Text = 'Save';
+            % Create OpenButton
+            app.OpenButton = uibutton(app.LeftPanel, 'push');
+            app.OpenButton.FontSize = 18;
+            app.OpenButton.Position = [20 221 117 69];
+            app.OpenButton.Text = 'Open';
 
-            % Create CurrentTemperatureGaugeLabel
-            app.CurrentTemperatureGaugeLabel = uilabel(app.LeftPanel);
-            app.CurrentTemperatureGaugeLabel.HorizontalAlignment = 'center';
-            app.CurrentTemperatureGaugeLabel.Position = [13 395 116 22];
-            app.CurrentTemperatureGaugeLabel.Text = 'Current Temperature';
+            % Create TemperatureGaugeLabel
+            app.TemperatureGaugeLabel = uilabel(app.LeftPanel);
+            app.TemperatureGaugeLabel.HorizontalAlignment = 'center';
+            app.TemperatureGaugeLabel.Position = [35 395 72 22];
+            app.TemperatureGaugeLabel.Text = 'Temperature';
 
-            % Create CurrentTemperatureGauge
-            app.CurrentTemperatureGauge = uigauge(app.LeftPanel, 'circular');
-            app.CurrentTemperatureGauge.Limits = [-90 120];
-            app.CurrentTemperatureGauge.Position = [20 432 103 103];
+            % Create TemperatureGauge
+            app.TemperatureGauge = uigauge(app.LeftPanel, 'circular');
+            app.TemperatureGauge.Limits = [-90 120];
+            app.TemperatureGauge.Position = [20 432 103 103];
+
+            % Create StartPlotButton_2
+            app.StartPlotButton_2 = uibutton(app.LeftPanel, 'push');
+            app.StartPlotButton_2.ButtonPushedFcn = createCallbackFcn(app, @StartPlotButton_2Pushed, true);
+            app.StartPlotButton_2.FontSize = 18;
+            app.StartPlotButton_2.Position = [23 130 114 64];
+            app.StartPlotButton_2.Text = 'Start Plot';
+
+            % Create StopPlotButton
+            app.StopPlotButton = uibutton(app.LeftPanel, 'push');
+            app.StopPlotButton.ButtonPushedFcn = createCallbackFcn(app, @StopPlotButtonPushed, true);
+            app.StopPlotButton.FontSize = 18;
+            app.StopPlotButton.Position = [25 26 112 70];
+            app.StopPlotButton.Text = 'Stop Plot';
 
             % Create CenterPanel
             app.CenterPanel = uipanel(app.GridLayout);
@@ -213,26 +242,17 @@ classdef groupProject < matlab.apps.AppBase
             ylabel(app.UIAxes, 'Temperature (°F)')
             zlabel(app.UIAxes, 'Z')
             app.UIAxes.ButtonDownFcn = createCallbackFcn(app, @UIAxesButtonDown2, true);
-            app.UIAxes.Position = [8 12 680 446];
-
-            % Create StartPlotButton_2
-            app.StartPlotButton_2 = uibutton(app.CenterPanel, 'push');
-            app.StartPlotButton_2.ButtonPushedFcn = createCallbackFcn(app, @StartPlotButton_2Pushed, true);
-            app.StartPlotButton_2.FontSize = 18;
-            app.StartPlotButton_2.Position = [27 470 96 70];
-            app.StartPlotButton_2.Text = 'Start Plot';
-
-            % Create StopPlotButton
-            app.StopPlotButton = uibutton(app.CenterPanel, 'push');
-            app.StopPlotButton.ButtonPushedFcn = createCallbackFcn(app, @StopPlotButtonPushed, true);
-            app.StopPlotButton.FontSize = 18;
-            app.StopPlotButton.Position = [145 470 96 70];
-            app.StopPlotButton.Text = 'Stop Plot';
+            app.UIAxes.Position = [8 12 680 467];
 
             % Create DigitalClockLabel
             app.DigitalClockLabel = uilabel(app.CenterPanel);
-            app.DigitalClockLabel.Position = [313 494 353 41];
+            app.DigitalClockLabel.Position = [49 497 72 22];
             app.DigitalClockLabel.Text = '00:00:00';
+
+            % Create TimerLabel
+            app.TimerLabel = uilabel(app.CenterPanel);
+            app.TimerLabel.Position = [49 518 35 22];
+            app.TimerLabel.Text = 'Timer';
 
             % Create RightPanel
             app.RightPanel = uipanel(app.GridLayout);
@@ -259,6 +279,7 @@ classdef groupProject < matlab.apps.AppBase
             app.LightModeSwitch = uiswitch(app.RightPanel, 'rocker');
             app.LightModeSwitch.Items = {'Day', 'Night'};
             app.LightModeSwitch.Orientation = 'horizontal';
+            app.LightModeSwitch.ValueChangedFcn = createCallbackFcn(app, @LightModeSwitchValueChanged, true);
             app.LightModeSwitch.Position = [34 497 86 38];
             app.LightModeSwitch.Value = 'Day';
 
@@ -271,6 +292,16 @@ classdef groupProject < matlab.apps.AppBase
             % Create ManualDayLightSwitch
             app.ManualDayLightSwitch = uiswitch(app.RightPanel, 'slider');
             app.ManualDayLightSwitch.Position = [39 221 83 36];
+
+            % Create LampDay
+            app.LampDay = uilamp(app.RightPanel);
+            app.LampDay.Position = [20 412 20 20];
+            app.LampDay.Color = [1 1 0];
+
+            % Create LampNight
+            app.LampNight = uilamp(app.RightPanel);
+            app.LampNight.Position = [112 412 20 20];
+            app.LampNight.Color = [1 1 1];
 
             % Show the figure after all components are created
             app.UIFigure.Visible = 'on';
