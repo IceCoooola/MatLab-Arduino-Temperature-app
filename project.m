@@ -16,6 +16,7 @@ classdef groupProject < matlab.apps.AppBase
         DigitalClockLabel            matlab.ui.control.Label
         UIAxes                       matlab.ui.control.UIAxes
         RightPanel                   matlab.ui.container.Panel
+        LightButton                  matlab.ui.control.StateButton
         LampNight                    matlab.ui.control.Lamp
         LampDay                      matlab.ui.control.Lamp
         ManualDayLightSwitch         matlab.ui.control.Switch
@@ -36,16 +37,66 @@ classdef groupProject < matlab.apps.AppBase
     properties (Access = private)
         a; % arduino
         v;
+        t;
         tempK;
         tempF;
         Plotting = false;
         ClockTimer;
+        timer_id;
     end
 
     methods (Access = private)
-
-        % Timer callback function
+        
         function updateClockLabel(app, ~)
+            % Timer callback function
+
+            currentTime = datetime('now');
+            clockString = datestr(currentTime, 'HH:MM:SS');
+            app.DigitalClockLabel.Text = clockString;
+        end
+
+        function intensity = readLightIntensity(app)
+            % read light intensity from sensor connected to microcontroller
+
+            analogPin = 'A1';
+            lightLevel = readVoltage(app.a, analogPin);
+            intensity = lightLevel / 3.3;
+        end
+
+        % Create function to update LED color
+        function updateLED(app)
+            intensity = readLightIntensity(app); % Function to read light intensity
+            threshold = 0.5;
+
+            if intensity < threshold
+                % turn on the light 
+                writeDigitalPin(a, 'D9', 1);
+            else
+                % turn off the light
+                writeDigitalPin(a, 'D9', 0);
+            end
+        end
+
+        function updateLEDbyTime(app)
+            % assign current time to a string
+            currentTime = datetime('now');
+            clockString = datestr(currentTime, 'HH:MM:SS');
+            % split the string to get a cell array contaning hour, minutes
+            % and seconds. 
+            timeCellString = split(clockString, ':');
+            % get the hour from the string and convert it to double
+            hour = str2double(timeCellString{1});
+            % check if hour greater than 6 or 
+            if hour > 6 && hour < 18
+                app.LightModeSwitch.Value = 'Day'; % Set LED color to red in the evening
+            else
+                app.LightModeSwitch.Value = 'Night'; % Set LED color to yellow during the day
+            end
+        end
+
+        function timer_handler(~,~)
+            % Timer callback function
+
             currentTime = datetime('now');
             clockString = datestr(currentTime, 'HH:MM:SS');
             app.DigitalClockLabel.Text = clockString;
@@ -61,7 +112,18 @@ classdef groupProject < matlab.apps.AppBase
             app.a = arduino;
             % Set the initial clock label text
             app.DigitalClockLabel.Text = '00:00:00';
-            updateClockLabel(app);
+            % updateClockLabel(app);
+            updateLEDbyTime(app);
+            app.timer_id = timer;
+            app.timer_id.StartDelay = 1.0;
+            app.timer_id.Period = 1.0;
+            % 周期性执行,fixedSpacing模式
+            app.timer_id.ExecutionMode = 'fixedSpacing';
+            app.timer_id.TimerFcn = @timer_handler;
+            %启动定时器
+            start(app.timer_id);
+
+
         end
 
         % Callback function
@@ -106,7 +168,6 @@ classdef groupProject < matlab.apps.AppBase
                 hold(app.UIAxes, "on");
                 updateClockLabel(app);
                 i = i + 1;
-                pause(1);
             end
         end
 
@@ -126,6 +187,19 @@ classdef groupProject < matlab.apps.AppBase
                 app.LampDay.Color = [1,1,1];
                 app.LampNight.Color = [1,0,0];
             end
+        end
+
+        % Value changed function: LightButton
+        function LightButtonValueChanged(app, event)
+            value = app.LightButton.Value;
+            if value == true
+                app.ManualDayLightSwitch.Enable = "on";
+                app.ManualNightLightSwitch.Enable = "on";
+            else
+                app.ManualDayLightSwitch.Enable = "off";
+                app.ManualNightLightSwitch.Enable = "off";
+            end
+
         end
 
         % Changes arrangement of the app based on UIFigure width
@@ -207,13 +281,13 @@ classdef groupProject < matlab.apps.AppBase
             % Create TemperatureGaugeLabel
             app.TemperatureGaugeLabel = uilabel(app.LeftPanel);
             app.TemperatureGaugeLabel.HorizontalAlignment = 'center';
-            app.TemperatureGaugeLabel.Position = [35 395 72 22];
+            app.TemperatureGaugeLabel.Position = [40 395 72 22];
             app.TemperatureGaugeLabel.Text = 'Temperature';
 
             % Create TemperatureGauge
             app.TemperatureGauge = uigauge(app.LeftPanel, 'circular');
             app.TemperatureGauge.Limits = [-90 120];
-            app.TemperatureGauge.Position = [20 432 103 103];
+            app.TemperatureGauge.Position = [25 432 103 103];
 
             % Create StartPlotButton_2
             app.StartPlotButton_2 = uibutton(app.LeftPanel, 'push');
@@ -262,17 +336,20 @@ classdef groupProject < matlab.apps.AppBase
             % Create ManualNightLightSwitchLabel
             app.ManualNightLightSwitchLabel = uilabel(app.RightPanel);
             app.ManualNightLightSwitchLabel.HorizontalAlignment = 'center';
-            app.ManualNightLightSwitchLabel.Position = [8 93 144 22];
+            app.ManualNightLightSwitchLabel.Enable = 'off';
+            app.ManualNightLightSwitchLabel.Position = [8 21 144 22];
             app.ManualNightLightSwitchLabel.Text = 'Manual Night Light Switch';
 
             % Create ManualNightLightSwitch
             app.ManualNightLightSwitch = uiswitch(app.RightPanel, 'slider');
-            app.ManualNightLightSwitch.Position = [46 130 68 30];
+            app.ManualNightLightSwitch.Enable = 'off';
+            app.ManualNightLightSwitch.Position = [46 58 68 30];
 
             % Create LightModeSwitchLabel
             app.LightModeSwitchLabel = uilabel(app.RightPanel);
             app.LightModeSwitchLabel.HorizontalAlignment = 'center';
-            app.LightModeSwitchLabel.Position = [45 457 64 22];
+            app.LightModeSwitchLabel.Enable = 'off';
+            app.LightModeSwitchLabel.Position = [46 184 64 22];
             app.LightModeSwitchLabel.Text = 'Light Mode';
 
             % Create LightModeSwitch
@@ -280,28 +357,37 @@ classdef groupProject < matlab.apps.AppBase
             app.LightModeSwitch.Items = {'Day', 'Night'};
             app.LightModeSwitch.Orientation = 'horizontal';
             app.LightModeSwitch.ValueChangedFcn = createCallbackFcn(app, @LightModeSwitchValueChanged, true);
-            app.LightModeSwitch.Position = [34 497 86 38];
+            app.LightModeSwitch.Enable = 'off';
+            app.LightModeSwitch.Position = [35 224 86 38];
             app.LightModeSwitch.Value = 'Day';
 
             % Create ManualDayLightSwitchLabel
             app.ManualDayLightSwitchLabel = uilabel(app.RightPanel);
             app.ManualDayLightSwitchLabel.HorizontalAlignment = 'center';
-            app.ManualDayLightSwitchLabel.Position = [13 184 137 22];
+            app.ManualDayLightSwitchLabel.Enable = 'off';
+            app.ManualDayLightSwitchLabel.Position = [13 100 137 22];
             app.ManualDayLightSwitchLabel.Text = 'Manual Day Light Switch';
 
             % Create ManualDayLightSwitch
             app.ManualDayLightSwitch = uiswitch(app.RightPanel, 'slider');
-            app.ManualDayLightSwitch.Position = [39 221 83 36];
+            app.ManualDayLightSwitch.Enable = 'off';
+            app.ManualDayLightSwitch.Position = [39 137 83 36];
 
             % Create LampDay
             app.LampDay = uilamp(app.RightPanel);
-            app.LampDay.Position = [20 412 20 20];
+            app.LampDay.Position = [21 185 20 20];
             app.LampDay.Color = [1 1 0];
 
             % Create LampNight
             app.LampNight = uilamp(app.RightPanel);
-            app.LampNight.Position = [112 412 20 20];
+            app.LampNight.Position = [113 185 20 20];
             app.LampNight.Color = [1 1 1];
+
+            % Create LightButton
+            app.LightButton = uibutton(app.RightPanel, 'state');
+            app.LightButton.ValueChangedFcn = createCallbackFcn(app, @LightButtonValueChanged, true);
+            app.LightButton.Text = 'Light';
+            app.LightButton.Position = [30 518 100 23];
 
             % Show the figure after all components are created
             app.UIFigure.Visible = 'on';
