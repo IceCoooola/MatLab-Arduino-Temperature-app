@@ -42,7 +42,6 @@ classdef groupProject < matlab.apps.AppBase
         tempF;
         Plotting = false;
         ClockTimer;
-        timer_id;
     end
 
     methods (Access = private)
@@ -94,13 +93,7 @@ classdef groupProject < matlab.apps.AppBase
             end
         end
 
-        function timer_handler(~,~)
-            % Timer callback function
-
-            currentTime = datetime('now');
-            clockString = datestr(currentTime, 'HH:MM:SS');
-            app.DigitalClockLabel.Text = clockString;
-        end
+       
     end
     
 
@@ -114,15 +107,22 @@ classdef groupProject < matlab.apps.AppBase
             app.DigitalClockLabel.Text = '00:00:00';
             % updateClockLabel(app);
             updateLEDbyTime(app);
-            app.timer_id = timer;
-            app.timer_id.StartDelay = 1.0;
-            app.timer_id.Period = 1.0;
+            timer_id = timer;
+            timer_id.StartDelay = 1.0;
+            timer_id.Period = 1.0;
             % 周期性执行,fixedSpacing模式
-            app.timer_id.ExecutionMode = 'fixedSpacing';
-            app.timer_id.TimerFcn = @timer_handler;
+            timer_id.ExecutionMode = 'fixedSpacing';
+            timer_id.TimerFcn = @timer_handler;
             %启动定时器
-            start(app.timer_id);
+            start(timer_id);
+            
+        function timer_handler(~,~)
+            % Timer callback function
 
+            currentTime = datetime('now');
+            clockString = datestr(currentTime, 'HH:MM:SS');
+            app.DigitalClockLabel.Text = clockString;
+        end
 
         end
 
