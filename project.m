@@ -40,137 +40,69 @@ classdef groupProject < matlab.apps.AppBase
 
     properties (Access = private)
         a; % arduino
-        v;
         t;
-        tempK;
         tempF;
-        Plotting = false;
         ClockTimer;
+        TempPlottingTimer; % a temperature plotting timer
+        DigitalClockTimer; % a digital clock timer
+        tempGaugeTimer; % a temperature gauge timer
+        automaticLightSwitch; % an automatic light switch timer
+        lightIntensityTimer; % a light intensity timer 
+        hour;
+        i = 1; % counter for temperature plotting
     end
 
-    methods (Access = private)
-        
-        function updateClockLabel(app, ~)
-            % update the clock label
+    methods (Access = public)
+        function TempPlottingTimerCallback(app, obj, event)  
+            % temperature plotting call back function
+            % when start the timer, this function run 2 times per seconds.
+            app.UIAxes.YLimMode = "manual";
+            app.UIAxes.YLim = [50, 90];
+            plot(app.UIAxes, app.i,app.tempF,"b*");
+            hold(app.UIAxes, "on");
+            app.i = app.i + 1;
+        end
+
+        function TempPlottingTimerStopFunc(app, obj, event)  
+            % change back the UI figure to auto limit mode
+           app.UIAxes.YLimMode = "auto";
+           app.UIAxes.XLimMode = "auto";
+        end
+
+        function DigitalClockTimerCallback(app, obj, event)
+            % this function update the current time clock and plot title
+            % clock
+
+            % get today's current date and time
             currentTime = datetime('now');
-            dateTime = datestr(currentTime);
+            % get the time 
             clockString = datestr(currentTime, 'HH:MM:SS');
+            % make today's date and time to a string
+            currentDateTime = datestr(currentTime);
+            % update the digital clock label
             app.DigitalClockLabel.Text = clockString;
-            titleStr = strcat("Temperature Vs. Time   ",dateTime);
+            % split the time string hour, min, sec
+            timeCellString = split(clockString, ':');
+            % save today's hour into hour variable.
+            app.hour = str2double(timeCellString{1});
+            % concat the title string
+            titleStr = strcat("Temperature Vs. Time   ", currentDateTime);
+            % update the plot title string
             app.UIAxes.Title.String = titleStr;
         end
-       
-    end
-    
 
-    % Callbacks that handle component events
-    methods (Access = private)
+        function tempGaugeTimerCallback(app, obj, event)
+                % this function read current temperature when timer is
+                % start
 
-        % Code that executes after component creation
-        function startupFcn(app)
-            
-            app.a = arduino;
-
-            analogPinlight = 'A1';
-            % read the intensity level
-            lightLevel = readVoltage(app.a, analogPinlight);
-            % the light intensity equal to the light level over 3.3V
-            intensity = lightLevel / 3.3;
-            app.lightintensityGauge.Value = intensity;
-
-            % Set the initial clock label text
-            app.DigitalClockLabel.Text = '00:00:00';
-
-            % create a timer
-            timer_clock = timer;
-            % set start delay
-            timer_clock.StartDelay = 1.0;
-            % set period
-            timer_clock.Period = 1.0;
-            % execution mode set to fixedSpacing mode
-            timer_clock.ExecutionMode = 'fixedSpacing';
-            % set a the timer_handler function to timer function
-            timer_clock.TimerFcn = @timer_handler;
-            % start the timer
-            start(timer_clock);
-            
-            % create a timer
-            timer_temp = timer;
-            % set start delay
-            timer_temp.StartDelay = 1.0;
-            % set period
-            timer_temp.Period = 1.0;
-            % execution mode set to fixedSpacing mode
-            timer_temp.ExecutionMode = 'fixedSpacing';
-            % set a the timer_handler function to timer function
-            timer_temp.TimerFcn = @timer_handler_temp_gauge;
-            % start the timer
-            start(timer_temp);
-            
-            % create a timer
-            timer_LEDtime = timer;
-            % set start delay
-            timer_LEDtime.StartDelay = 1.0;
-            % set period
-            timer_LEDtime.Period = 1.0;
-            % execution mode set to fixedSpacing mode
-            timer_LEDtime.ExecutionMode = 'fixedSpacing';
-            % set a the timer_handler function to timer function
-            timer_LEDtime.TimerFcn = @timer_updateLEDbyTime;
-            % start the timer
-            start(timer_LEDtime);
-
-                        % create a timer
-            timer_light = timer;
-            % set start delay
-            timer_light.StartDelay = 0.1;
-            % set period
-            timer_light.Period = 0.1;
-            % execution mode set to fixedSpacing mode
-            timer_light.ExecutionMode = 'fixedSpacing';
-            % set a the timer_handler function to timer function
-            timer_light.TimerFcn = @timer_handler_light;
-            % start the timer
-            start(timer_light);
-            
-
-        function timer_updateLEDbyTime(~, ~)
-            % this function check current time and update the automatic day/night mode 
-            % switch value to day or night mode.
-
-            % assign current time to a string
-            currentTime = datetime('now');
-            clockString = datestr(currentTime, 'HH:MM:SS');
-
-            % split the string to get a cell array contaning hour, minutes
-            % and seconds. 
-            timeCellString = split(clockString, ':');
-            % get the hour from the string and convert it to double
-            hour = str2double(timeCellString{1});
-            % check if hour greater than 6 and less than 18
-            if hour > 6 && hour < 18
-                app.LightModeSwitch.Value = "Day"; % Set LED color to red in the evening
-            else
-                app.LightModeSwitch.Value = "Night"; % Set LED color to yellow during the day
-            end
-        end
-
-        function timer_handler(~,~)
-            % Timer handler that updates the time for the app
-            currentTime = datetime('now');
-            clockString = datestr(currentTime, 'HH:MM:SS');
-            app.DigitalClockLabel.Text = clockString;
-        end
-
-            function timer_handler_temp_gauge(~, ~)
                 %  read the voltage
                 analogPinlight = 'A0';
-                app.v = readVoltage(app.a, analogPinlight);
+                v = readVoltage(app.a, analogPinlight);
                 %read by Arduino to a temperature in Kelvin
                 SeriesResistor = 10000; % the 10K ohm resistor is used in the circuit
                 ThermistorResistance = 10000; %The resistance of thermistor
                 %With NTC thermistors, resistance decreases as temperature increases
-                resistance = SeriesResistor .* app.v ./ (5 - app.v);
+                resistance = SeriesResistor .* v ./ (5 - v);
                 %Constants used in Steinhart equation
                 A1 = 3.354016E-03;
                 B1 = 2.569850E-04;
@@ -179,51 +111,117 @@ classdef groupProject < matlab.apps.AppBase
                 % calculate the resistance
                 resRatio = log(resistance ./ ThermistorResistance);
                 % calculate the temperature in Kelvin
-                app.tempK = 1 ./ (A1 + B1 .* resRatio + C1 .* resRatio .^ 2 + D1 .* resRatio .^ 3);
+                tempK = 1 ./ (A1 + B1 .* resRatio + C1 .* resRatio .^ 2 + D1 .* resRatio .^ 3);
                 % calculate the temperature in C
-                tempC = app.tempK - 273.15;
+                tempC = tempK - 273.15;
                 % calculate the temperature in F
                 app.tempF = 9/5 * tempC + 32;
                 % update the gauge value
                 app.TemperatureGauge.Value = app.tempF;
-                
-            end
-            
-            function timer_handler_light(~,~)
-                analogPin = 'A1';
-                % read the intensity level
-                lightLevel = readVoltage(app.a, analogPin);
-                % the light intensity equal to the light level over 3.3V
-                intensity = lightLevel / 3.3;
-                app.lightintensityGauge.Value = intensity;
-                threshold = 0.4; % set an intensity threhold
-                minIntensity = 0.01;
-                maxIntensity = 0.96;
-                % intensity range 0.1-0.9 , 0.1 means low light, 0.9 means high light
-                % 0.4 intensity low
-                % 0.7 high intensity
-                dayLightOut = 'D9';
-                nightLightOut = 'D11';
-                lightLevel = (1 - intensity + minIntensity) / (maxIntensity - minIntensity);
+        end
 
-                if intensity < threshold
-                    % turn on the light 
-                    % if it's day, turn on day light
-                    if app.LightModeSwitch.Value == "Day"
-                        writePWMDutyCycle(app.a,dayLightOut, lightLevel);
-                        % writeDigitalPin(app.a, dayLightOut, 1);
-                    % if it's night, turn on night light
-                    end
-                    if app.LightModeSwitch.Value == "Night"
-                        writePWMDutyCycle(app.a,dayLightOut, lightLevel);
-                        % writeDigitalPin(app.a, nightLightOut, 1);
-                    end
-                else
-                    % turn off both light
-                    writeDigitalPin(app.a, dayLightOut, 0);
-                    writeDigitalPin(app.a, nightLightOut, 0);
-                end
+        function automaticLightSwitchTimerCallback(app, obj, event)
+            % this function check current time and update the automatic day/night mode 
+            % switch value to day or night mode, and the app lamp to yellow or red.
+
+            % check if hour greater than 6 and less than 18, if it is day time
+             if app.hour > 6 && app.hour < 18
+                app.LightModeSwitch.Value = "Day"; % Set LED color to yellow during the day
+                % set the lamp to yellow
+                app.LampNight.Color = [1,1,1]; 
+                app.LampDay.Color = [1,1,0];
+            else
+                app.LightModeSwitch.Value = "Night"; % Set LED color to red in the evening
+                % set the lamp to red
+                app.LampDay.Color = [1,1,1]; 
+                app.LampNight.Color = [1,0,0];
             end
+        end
+
+        function lightIntensityTimerCallback(app, obj, event)
+            % this function will read light intensity and decide to turn on
+            % or off the light.
+            analogPin = 'A1';
+            maxVoltage = 3.3;
+            % read the intensity level
+            lightVoltage = readVoltage(app.a, analogPin);
+            % the light intensity equal to the light level over 3.3V
+            intensity = lightVoltage / maxVoltage;
+            app.lightintensityGauge.Value = intensity;
+            threshold = 0.25; % set an intensity threhold
+            dayLightOut = 'D9';
+            nightLightOut = 'D11';
+            lightLevel = (threshold - intensity) * (1 - threshold - intensity);
+
+            if intensity < threshold
+                % turn on the light 
+                % if it's day, turn on day light
+                if app.LightModeSwitch.Value == "Day"
+                    writePWMDutyCycle(app.a,dayLightOut, lightLevel);
+                    % writeDigitalPin(app.a, dayLightOut, 1);
+                % if it's night, turn on night light
+                end
+                if app.LightModeSwitch.Value == "Night"
+                    writePWMDutyCycle(app.a,nightLightOut, lightLevel);
+                end
+            else
+                % turn off both light
+                writeDigitalPin(app.a, dayLightOut, 0);
+                writeDigitalPin(app.a, nightLightOut, 0);
+            end
+         end
+        function lightIntensityTimerStopFcn(app, obj, event)
+            dayLightOut = 'D9';
+            nightLightOut = 'D11';
+            % turn off both light
+            writeDigitalPin(app.a, dayLightOut, 0);
+            writeDigitalPin(app.a, nightLightOut, 0);
+        end
+    end
+    
+
+    methods (Access = private)
+        
+        
+    end
+    
+
+    % Callbacks that handle component events
+    methods (Access = private)
+
+        % Code that executes after component creation
+        function startupFcn(app)
+            % 
+            % app.a = arduino;
+            % 
+            % analogPinlight = 'A1';
+            % 
+            % % create a temperature plotting timer. timer run 2 times per seconds. 
+            % app.TempPlottingTimer = timer('Period',0.5,'ExecutionMode','fixedSpacing','TasksToExecute', Inf);
+            % app.TempPlottingTimer.TimerFcn = {@app.TempPlottingTimerCallback};
+            % app.TempPlottingTimer.stopFcn = {@TempPlottingTimerStopFunc};
+            % 
+            % % create a light intensity read and turn on/off light timer. timer run 10 times per seconds. 
+            % app.lightIntensityTimer = timer('Period',0.1,'ExecutionMode','fixedSpacing','TasksToExecute', Inf);
+            % app.lightIntensityTimer.TimerFcn = {@app.lightIntensityTimerCallback};
+            % app.lightIntensityTimer.stopFcn = {@app.lightIntensityTimerStopFcn};
+            % 
+            % % create a digital clock timer. timer run 1 times per seconds. 
+            % app.DigitalClockTimer = timer('Period',1,'ExecutionMode','fixedSpacing','TasksToExecute', Inf);
+            % app.DigitalClockTimer.TimerFcn = {@app.DigitalClockTimerCallback};
+            % start(app.DigitalClockTimer);
+            % 
+            % % create a temperature gauge timer. timer run 10 times per seconds. 
+            % app.tempGaugeTimer = timer('Period',0.1,'ExecutionMode','fixedSpacing','TasksToExecute', Inf);
+            % app.tempGaugeTimer.TimerFcn = {@app.tempGaugeTimerCallback};
+            % start(app.tempGaugeTimer);
+            % 
+            % % create a automatic light switch timer. timer run 1 time per ten seconds. 
+            % app.automaticLightSwitch = timer('Period',10,'ExecutionMode','fixedSpacing','TasksToExecute', Inf);
+            % app.automaticLightSwitch.TimerFcn = {@app.automaticLightSwitchTimerCallback};
+            % start(app.automaticLightSwitch);
+            % 
+            
         end
 
         % Callback function
@@ -243,69 +241,21 @@ classdef groupProject < matlab.apps.AppBase
 
         % Button pushed function: StartPlotButton_2
         function StartPlotButton_2Pushed(app, event)
-
-            % a loop testing for graph.
-            app.Plotting = true;
-            % set the analogPin
-            analogPin = 'A0';
-            i = 1;
-            % create a infinit loop which Plotting variable is true 
-            while app.Plotting
-                % read the voltage
-                app.v = readVoltage(app.a, analogPin);
-                %read by Arduino to a temperature in Kelvin
-                SeriesResistor = 10000; % the 10K ohm resistor is used in the circuit
-                ThermistorResistance = 10000; %The resistance of thermistor
-                %With NTC thermistors, resistance decreases as temperature increases
-                resistance = SeriesResistor .* app.v ./ (5 - app.v);
-                %Constants used in Steinhart equation
-                A1 = 3.354016E-03;
-                B1 = 2.569850E-04;
-                C1 = 2.620131E-06;
-                D1 = 6.383091E-08;
-                % calculate the resistance
-                resRatio = log(resistance ./ ThermistorResistance);
-                % calculate the temperature in Kelvin
-                app.tempK = 1 ./ (A1 + B1 .* resRatio + C1 .* resRatio .^ 2 + D1 .* resRatio .^ 3);
-                % calculate the temperature in C
-                tempC = app.tempK - 273.15;
-                % calculate the temperature in F
-                app.tempF = 9/5 * tempC + 32;
-                % update the gauge value
-                app.TemperatureGauge.Value = app.tempF;
-                plot(app.UIAxes, i, app.tempF,"b--*");
-                hold(app.UIAxes, "on");
-                updateClockLabel(app);
-                i = i + 1;
-            end
-            hold(app.UIAxes, "off");
+            % start the temperature plotting timer.
+            start(app.TempPlottingTimer);
         end
 
         % Button pushed function: StopPlotButton
         function StopPlotButtonPushed(app, event)
-            % set plotting variable to false
-            app.Plotting = false;
+            
+            stop(app.TempPlottingTimer);
+            app.i = 1;
+            hold(app.UIAxes, "off");
         end
 
         % Value changed function: LightModeSwitch
         function LightModeSwitchValueChanged(app, event)
-            % this function update the little light color on the app,
-            % indicate it's day light mode or night light mode
 
-            % get the value from the automatic day/night light switch
-            value = app.LightModeSwitch.Value;
-
-            % if value is day, change the light color to daylight color
-            if value == "Day"
-                app.LampNight.Color = [1,1,1];
-                app.LampDay.Color = [1,1,0];
-            end
-
-            % if value is night, change the light color to nightlight color
-            if value == "Night"
-                app.LampDay.Color = [1,1,1];
-                app.LampNight.Color = [1,0,0];
-            end
         end
 
         % Value changed function: LightButton
@@ -340,7 +290,6 @@ classdef groupProject < matlab.apps.AppBase
                 imshow(fid,'Parent',app.UIAxes);
 
             % delete the file object
-            delete(fid);
             end
         
         end
@@ -373,17 +322,17 @@ classdef groupProject < matlab.apps.AppBase
                 print(new_f_handle,'-dbmp',file);
             end
             end
-            % delete the new file handle
-            delete(new_f_handle);
         end
 
         % Value changed function: ManualDayLightSwitch
         function ManualDayLightSwitchValueChanged(app, event)
             value = app.ManualDayLightSwitch.Value;
             dayLightOut = 'D9';
+      
             if value == "On"
+                app.automaticlightswitchSwitch.Value = "Off";
+                automaticlightswitchSwitchValueChanged(app);
                 writeDigitalPin(app.a, dayLightOut, 1);
-                % writeDigitalPin(app.a, dayLightOut, 1);
             end
             if value == "Off"
                 writeDigitalPin(app.a, dayLightOut, 0);
@@ -395,6 +344,8 @@ classdef groupProject < matlab.apps.AppBase
             value = app.ManualNightLightSwitch.Value;
             nightLightOut = 'D11';
             if value == "On"
+                app.automaticlightswitchSwitch.Value = "Off";
+                automaticlightswitchSwitchValueChanged(app);
                 writeDigitalPin(app.a, nightLightOut, 1);
             end
             if value == "Off"
@@ -405,7 +356,19 @@ classdef groupProject < matlab.apps.AppBase
         % Value changed function: automaticlightswitchSwitch
         function automaticlightswitchSwitchValueChanged(app, event)
             value = app.automaticlightswitchSwitch.Value;
-           
+            
+            if value == "On"
+                start(app.lightIntensityTimer);
+            end
+
+            if value == "Off"
+                stop(app.lightIntensityTimer);
+            end
+        end
+
+        % Close request function: UIFigure
+        function UIFigureCloseRequest(app, event)
+            
         end
 
         % Changes arrangement of the app based on UIFigure width
@@ -456,6 +419,7 @@ classdef groupProject < matlab.apps.AppBase
             app.UIFigure.AutoResizeChildren = 'off';
             app.UIFigure.Position = [100 100 1018 559];
             app.UIFigure.Name = 'MATLAB App';
+            app.UIFigure.CloseRequestFcn = createCallbackFcn(app, @UIFigureCloseRequest, true);
             app.UIFigure.SizeChangedFcn = createCallbackFcn(app, @updateAppLayout, true);
 
             % Create GridLayout
@@ -523,9 +487,8 @@ classdef groupProject < matlab.apps.AppBase
             xlabel(app.UIAxes, 'Time (seconds)')
             ylabel(app.UIAxes, 'Temperature (°F)')
             zlabel(app.UIAxes, 'Z')
-            app.UIAxes.YLim = [50 90];
             app.UIAxes.ButtonDownFcn = createCallbackFcn(app, @UIAxesButtonDown2, true);
-            app.UIAxes.Position = [8 12 680 467];
+            app.UIAxes.Position = [8 6 668 462];
 
             % Create DigitalClockLabel
             app.DigitalClockLabel = uilabel(app.CenterPanel);
