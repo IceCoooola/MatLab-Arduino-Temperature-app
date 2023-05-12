@@ -1,4 +1,4 @@
-classdef groupProject < matlab.apps.AppBase
+classdef groupProject_new < matlab.apps.AppBase
 
     % Properties that correspond to app components
     properties (Access = public)
@@ -57,6 +57,7 @@ classdef groupProject < matlab.apps.AppBase
             % temperature plotting call back function
             % when start the timer, this function run 2 times per seconds.
             app.UIAxes.YLimMode = "manual";
+            app.UIAxes.XLimMode = "auto";
             app.UIAxes.YLim = [50, 90];
             plot(app.UIAxes, app.i,app.tempF,"b*");
             hold(app.UIAxes, "on");
@@ -65,8 +66,10 @@ classdef groupProject < matlab.apps.AppBase
 
         function TempPlottingTimerStopFunc(app, obj, event)  
             % change back the UI figure to auto limit mode
-           app.UIAxes.YLimMode = "auto";
+           % app.UIAxes.YLimMode = "auto";
            app.UIAxes.XLimMode = "auto";
+           app.i = 1;
+           hold(app.UIAxes, "off");
         end
 
         function DigitalClockTimerCallback(app, obj, event)
@@ -191,36 +194,35 @@ classdef groupProject < matlab.apps.AppBase
 
         % Code that executes after component creation
         function startupFcn(app)
-            % 
-            % app.a = arduino;
-            % 
-            % analogPinlight = 'A1';
-            % 
-            % % create a temperature plotting timer. timer run 2 times per seconds. 
-            % app.TempPlottingTimer = timer('Period',0.5,'ExecutionMode','fixedSpacing','TasksToExecute', Inf);
-            % app.TempPlottingTimer.TimerFcn = {@app.TempPlottingTimerCallback};
-            % app.TempPlottingTimer.stopFcn = {@TempPlottingTimerStopFunc};
-            % 
-            % % create a light intensity read and turn on/off light timer. timer run 10 times per seconds. 
-            % app.lightIntensityTimer = timer('Period',0.1,'ExecutionMode','fixedSpacing','TasksToExecute', Inf);
-            % app.lightIntensityTimer.TimerFcn = {@app.lightIntensityTimerCallback};
-            % app.lightIntensityTimer.stopFcn = {@app.lightIntensityTimerStopFcn};
-            % 
-            % % create a digital clock timer. timer run 1 times per seconds. 
-            % app.DigitalClockTimer = timer('Period',1,'ExecutionMode','fixedSpacing','TasksToExecute', Inf);
-            % app.DigitalClockTimer.TimerFcn = {@app.DigitalClockTimerCallback};
-            % start(app.DigitalClockTimer);
-            % 
-            % % create a temperature gauge timer. timer run 10 times per seconds. 
-            % app.tempGaugeTimer = timer('Period',0.1,'ExecutionMode','fixedSpacing','TasksToExecute', Inf);
-            % app.tempGaugeTimer.TimerFcn = {@app.tempGaugeTimerCallback};
-            % start(app.tempGaugeTimer);
-            % 
-            % % create a automatic light switch timer. timer run 1 time per ten seconds. 
-            % app.automaticLightSwitch = timer('Period',10,'ExecutionMode','fixedSpacing','TasksToExecute', Inf);
-            % app.automaticLightSwitch.TimerFcn = {@app.automaticLightSwitchTimerCallback};
-            % start(app.automaticLightSwitch);
-            % 
+            
+            app.a = arduino;
+            
+            
+            % create a temperature plotting timer. timer run 2 times per seconds. 
+            app.TempPlottingTimer = timer('Period',0.5,'ExecutionMode','fixedSpacing','TasksToExecute', Inf);
+            app.TempPlottingTimer.TimerFcn = {@app.TempPlottingTimerCallback};
+            app.TempPlottingTimer.stopFcn = {@app.TempPlottingTimerStopFunc};
+            
+            % create a light intensity read and turn on/off light timer. timer run 10 times per seconds. 
+            app.lightIntensityTimer = timer('Period',0.1,'ExecutionMode','fixedSpacing','TasksToExecute', Inf);
+            app.lightIntensityTimer.TimerFcn = {@app.lightIntensityTimerCallback};
+            app.lightIntensityTimer.stopFcn = {@app.lightIntensityTimerStopFcn};
+            
+            % create a digital clock timer. timer run 1 times per seconds. 
+            app.DigitalClockTimer = timer('Period',1,'ExecutionMode','fixedSpacing','TasksToExecute', Inf);
+            app.DigitalClockTimer.TimerFcn = {@app.DigitalClockTimerCallback};
+            start(app.DigitalClockTimer);
+            
+            % create a temperature gauge timer. timer run 10 times per seconds. 
+            app.tempGaugeTimer = timer('Period',0.1,'ExecutionMode','fixedSpacing','TasksToExecute', Inf);
+            app.tempGaugeTimer.TimerFcn = {@app.tempGaugeTimerCallback};
+            start(app.tempGaugeTimer);
+            
+            % create a automatic light switch timer. timer run 1 time per ten seconds. 
+            app.automaticLightSwitch = timer('Period',10,'ExecutionMode','fixedSpacing','TasksToExecute', Inf);
+            app.automaticLightSwitch.TimerFcn = {@app.automaticLightSwitchTimerCallback};
+            start(app.automaticLightSwitch);
+            
             
         end
 
@@ -242,6 +244,7 @@ classdef groupProject < matlab.apps.AppBase
         % Button pushed function: StartPlotButton_2
         function StartPlotButton_2Pushed(app, event)
             % start the temperature plotting timer.
+            cla(app.UIAxes, "reset");
             start(app.TempPlottingTimer);
         end
 
@@ -249,8 +252,7 @@ classdef groupProject < matlab.apps.AppBase
         function StopPlotButtonPushed(app, event)
             
             stop(app.TempPlottingTimer);
-            app.i = 1;
-            hold(app.UIAxes, "off");
+            
         end
 
         % Value changed function: LightModeSwitch
@@ -287,6 +289,7 @@ classdef groupProject < matlab.apps.AppBase
 
             % if file is open
             if fid ~= 0
+                app.UIAxes.YLimMode = "auto";
                 imshow(fid,'Parent',app.UIAxes);
 
             % delete the file object
@@ -330,11 +333,11 @@ classdef groupProject < matlab.apps.AppBase
             dayLightOut = 'D9';
       
             if value == "On"
-                app.automaticlightswitchSwitch.Value = "Off";
-                automaticlightswitchSwitchValueChanged(app);
+                app.automaticlightswitchSwitch.Enable = "off";
                 writeDigitalPin(app.a, dayLightOut, 1);
             end
             if value == "Off"
+                app.automaticlightswitchSwitch.Enable = "on";
                 writeDigitalPin(app.a, dayLightOut, 0);
             end
         end
@@ -344,11 +347,11 @@ classdef groupProject < matlab.apps.AppBase
             value = app.ManualNightLightSwitch.Value;
             nightLightOut = 'D11';
             if value == "On"
-                app.automaticlightswitchSwitch.Value = "Off";
-                automaticlightswitchSwitchValueChanged(app);
+                app.automaticlightswitchSwitch.Enable = "off";
                 writeDigitalPin(app.a, nightLightOut, 1);
             end
             if value == "Off"
+                app.automaticlightswitchSwitch.Enable = "on";
                 writeDigitalPin(app.a, nightLightOut, 0);
             end
         end
@@ -357,18 +360,26 @@ classdef groupProject < matlab.apps.AppBase
         function automaticlightswitchSwitchValueChanged(app, event)
             value = app.automaticlightswitchSwitch.Value;
             
+            % if the automatic switch is on, turn off manual switch
             if value == "On"
+                app.ManualDayLightSwitch.Enable = "off";
+                app.ManualNightLightSwitch.Enable = "off";
                 start(app.lightIntensityTimer);
             end
-
+            % if the automatic switch is off, turn on manual switch
             if value == "Off"
+                app.ManualDayLightSwitch.Enable = "on";
+                app.ManualNightLightSwitch.Enable = "on";
                 stop(app.lightIntensityTimer);
             end
         end
 
         % Close request function: UIFigure
         function UIFigureCloseRequest(app, event)
-            
+            stop(app.DigitalClockTimer);
+            stop(app.tempGaugeTimer);
+            stop(app.automaticLightSwitch);
+          
         end
 
         % Changes arrangement of the app based on UIFigure width
@@ -596,7 +607,7 @@ classdef groupProject < matlab.apps.AppBase
     methods (Access = public)
 
         % Construct app
-        function app = groupProject
+        function app = groupProject_new
 
             % Create UIFigure and components
             createComponents(app)
