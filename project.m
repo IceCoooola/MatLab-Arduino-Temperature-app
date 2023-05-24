@@ -1,4 +1,4 @@
-classdef groupProject_new < matlab.apps.AppBase
+classdef group10_Dee_Shokuh_Behishta < matlab.apps.AppBase
 
     % Properties that correspond to app components
     properties (Access = public)
@@ -56,8 +56,11 @@ classdef groupProject_new < matlab.apps.AppBase
         function TempPlottingTimerCallback(app, obj, event)  
             % temperature plotting call back function
             % when start the timer, this function run 2 times per seconds.
+            % set the Y axis limit to manual
             app.UIAxes.YLimMode = "manual";
+            % set the x axis limit to auto
             app.UIAxes.XLimMode = "auto";
+            % set the y lower limit to 50 and upper limit to 90
             app.UIAxes.YLim = [50, 90];
             plot(app.UIAxes, app.i,app.tempF,"b*");
             hold(app.UIAxes, "on");
@@ -66,9 +69,12 @@ classdef groupProject_new < matlab.apps.AppBase
 
         function TempPlottingTimerStopFunc(app, obj, event)  
             % change back the UI figure to auto limit mode
-           % app.UIAxes.YLimMode = "auto";
+          
+            % set the x axis limit to auto
            app.UIAxes.XLimMode = "auto";
+           % reset i
            app.i = 1;
+           % hold off the graph
            hold(app.UIAxes, "off");
         end
 
@@ -174,6 +180,9 @@ classdef groupProject_new < matlab.apps.AppBase
             end
          end
         function lightIntensityTimerStopFcn(app, obj, event)
+            % this timer function check the light intensity each seconds 
+            % and turn or off the light
+
             dayLightOut = 'D9';
             nightLightOut = 'D11';
             % turn off both light
@@ -194,7 +203,7 @@ classdef groupProject_new < matlab.apps.AppBase
 
         % Code that executes after component creation
         function startupFcn(app)
-            
+            % set up the arduino
             app.a = arduino;
             
             
@@ -243,14 +252,20 @@ classdef groupProject_new < matlab.apps.AppBase
 
         % Button pushed function: StartPlotButton_2
         function StartPlotButton_2Pushed(app, event)
-            % start the temperature plotting timer.
+           % this function check if start button pushed, start plot the
+           % graph
+
+            %reset the graph and start the temperature plotting timer.
             cla(app.UIAxes, "reset");
             start(app.TempPlottingTimer);
         end
 
         % Button pushed function: StopPlotButton
         function StopPlotButtonPushed(app, event)
-            
+            % this function check if stop button is pushed, stop plot the
+            % graph.
+
+            % stop the timer
             stop(app.TempPlottingTimer);
             
         end
@@ -329,13 +344,17 @@ classdef groupProject_new < matlab.apps.AppBase
 
         % Value changed function: ManualDayLightSwitch
         function ManualDayLightSwitchValueChanged(app, event)
+            % this function check the manual day light switch changed and
+            % turn on or off the light 
             value = app.ManualDayLightSwitch.Value;
             dayLightOut = 'D9';
       
+            % is switch is on, turn on the light 
             if value == "On"
                 app.automaticlightswitchSwitch.Enable = "off";
                 writeDigitalPin(app.a, dayLightOut, 1);
             end
+            % if switch is off, turn off the light 
             if value == "Off"
                 app.automaticlightswitchSwitch.Enable = "on";
                 writeDigitalPin(app.a, dayLightOut, 0);
@@ -344,12 +363,16 @@ classdef groupProject_new < matlab.apps.AppBase
 
         % Value changed function: ManualNightLightSwitch
         function ManualNightLightSwitchValueChanged(app, event)
+            % this function check the manual night light switch changed and
+            % turn on or off the light 
             value = app.ManualNightLightSwitch.Value;
             nightLightOut = 'D11';
+            % is switch is on, turn on the light 
             if value == "On"
                 app.automaticlightswitchSwitch.Enable = "off";
                 writeDigitalPin(app.a, nightLightOut, 1);
             end
+            % if switch is off, turn off the light 
             if value == "Off"
                 app.automaticlightswitchSwitch.Enable = "on";
                 writeDigitalPin(app.a, nightLightOut, 0);
@@ -379,7 +402,7 @@ classdef groupProject_new < matlab.apps.AppBase
             stop(app.DigitalClockTimer);
             stop(app.tempGaugeTimer);
             stop(app.automaticLightSwitch);
-          
+            delete(app);
         end
 
         % Changes arrangement of the app based on UIFigure width
@@ -514,13 +537,13 @@ classdef groupProject_new < matlab.apps.AppBase
             % Create lightintensityGaugeLabel
             app.lightintensityGaugeLabel = uilabel(app.CenterPanel);
             app.lightintensityGaugeLabel.HorizontalAlignment = 'center';
-            app.lightintensityGaugeLabel.Position = [364 480 76 22];
+            app.lightintensityGaugeLabel.Position = [276 533 163 22];
             app.lightintensityGaugeLabel.Text = 'light intensity';
 
             % Create lightintensityGauge
             app.lightintensityGauge = uigauge(app.CenterPanel, 'linear');
             app.lightintensityGauge.Limits = [0 1];
-            app.lightintensityGauge.Position = [86 501 590 41];
+            app.lightintensityGauge.Position = [85 493 590 41];
 
             % Create RightPanel
             app.RightPanel = uipanel(app.GridLayout);
@@ -607,7 +630,7 @@ classdef groupProject_new < matlab.apps.AppBase
     methods (Access = public)
 
         % Construct app
-        function app = groupProject_new
+        function app = group10_Dee_Shokuh_Behishta
 
             % Create UIFigure and components
             createComponents(app)
